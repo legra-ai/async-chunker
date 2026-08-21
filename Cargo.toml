@@ -1,0 +1,32 @@
+[package]
+name = "async-chunker"
+version = "0.1.0"
+description = "Bounded-memory asynchronous content-defined chunking for structured and media streams"
+authors = ["Jacobus Geluk <jacobus.geluk@dataroad.com>"]
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/legra-ai/async-chunker"
+documentation = "https://docs.rs/async-chunker"
+readme = "README.md"
+keywords = ["async", "chunking", "streaming", "content-defined", "parser"]
+categories = ["asynchronous", "data-structures", "encoding"]
+publish = true
+
+[dependencies]
+async-stream = "0.3"
+blake3 = "1"
+futures-core = "0.3"
+thiserror = "2"
+tokio = { version = "1", features = ["io-util"] }
+
+[dev-dependencies]
+flate2 = "1"
+futures-util = "0.3"
+tokio = { version = "1", features = ["macros", "rt", "io-util"] }
+
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+all = "deny"
