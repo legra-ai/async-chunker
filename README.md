@@ -20,6 +20,21 @@ The public async adapter reads a fixed 64 KiB window. Profile state is bounded
 by the profile's maximum chunk size and a single emitted chunk is retained only
 until the caller polls the next stream item.
 
+## Why content-defined chunks?
+
+Chunk boundaries are derived from the bytes and the selected profile rather
+than from absolute offsets. That makes the same content produce the same
+chunk boundaries, and makes insertions or deletions less likely to shift every
+later boundary. When files share identical regions—or successive versions
+change only a small region—those regions are therefore more likely to reuse
+the same content-addressed blocks instead of producing new blocks for the
+entire remainder.
+
+This is a reuse opportunity, not a guarantee: boundaries depend on the
+profile, the surrounding bytes, and any format-specific structure. The
+important contract is deterministic, bounded-memory streaming: each chunk is
+emitted once and can be persisted or deduplicated immediately.
+
 ## Example
 
 ```rust
