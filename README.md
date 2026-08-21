@@ -2,8 +2,9 @@
 
 [![Crates.io](https://img.shields.io/crates/v/async-chunker.svg)](https://crates.io/crates/async-chunker)
 [![Documentation](https://docs.rs/async-chunker/badge.svg)](https://docs.rs/async-chunker)
-[![CI](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml/badge.svg)](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](https://github.com/legra-ai/async-chunker#license)
+[![CI](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/crates/d/async-chunker.svg)](https://crates.io/crates/async-chunker)
+[![License](https://img.shields.io/crates/l/async-chunker.svg)](LICENSE-APACHE)
 
 Bounded-memory asynchronous content-defined chunking for structured and media
 streams.
