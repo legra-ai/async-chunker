@@ -1,10 +1,10 @@
 # async-chunker
 
-[![Crates.io](https://img.shields.io/crates/v/async-chunker.svg)](https://crates.io/crates/async-chunker)
-[![Documentation](https://docs.rs/async-chunker/badge.svg)](https://docs.rs/async-chunker)
-[![CI](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml)
-[![Downloads](https://img.shields.io/crates/d/async-chunker.svg)](https://crates.io/crates/async-chunker)
-[![License](https://img.shields.io/crates/l/async-chunker.svg)](LICENSE-APACHE)
+[![Crates.io](https://img.shields.io/crates/v/async-chunker.svg?cacheSeconds=300)](https://crates.io/crates/async-chunker)
+[![Documentation](https://docs.rs/async-chunker/badge.svg?cacheSeconds=300)](https://docs.rs/async-chunker)
+[![CI](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml/badge.svg?branch=main&cacheSeconds=300)](https://github.com/legra-ai/async-chunker/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/crates/d/async-chunker.svg?cacheSeconds=300)](https://crates.io/crates/async-chunker)
+[![License](https://img.shields.io/crates/l/async-chunker.svg?cacheSeconds=300)](LICENSE-APACHE)
 
 Bounded-memory asynchronous content-defined chunking for structured and media
 streams.
