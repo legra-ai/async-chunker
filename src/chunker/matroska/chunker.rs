@@ -18,7 +18,7 @@ use crate::chunker::profile_chunker::Chunker;
 /// `Cluster`s are descended, the latter closing at the next
 /// segment-level element. Cut candidates are **unit boundaries**
 /// under the shared container-profile assembly rule
-/// ([`BoundaryAssembler`]): a large unit always begins a chunk,
+/// (`BoundaryAssembler`): a large unit always begins a chunk,
 /// small elements attach backward, and the gear hash places
 /// content-defined cuts inside large clusters. A metadata edit
 /// (`Info`, `Tags`) or an appended stream leaves every untouched

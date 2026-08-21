@@ -23,7 +23,7 @@ use crate::chunker::profile_chunker::Chunker;
 /// stream before any root is written.
 ///
 /// A large member always begins a chunk and small members attach
-/// **backward** ([`BoundaryAssembler`]): an
+/// **backward** (`BoundaryAssembler`): an
 /// OOXML document part followed by its relationship parts and then
 /// media therefore keeps the media chunks identical across edits of
 /// the document. Memory is two chunks at most.
