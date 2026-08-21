@@ -21,7 +21,7 @@ use crate::chunker::profile_chunker::Chunker;
 /// media bytes in `mdat` stay identical, so `mdat` chunks are reused;
 /// fragmented files (`moof` + `mdat` pairs) and HEIF items behave the
 /// same way. A large box always begins a chunk and small boxes attach
-/// backward ([`BoundaryAssembler`]).
+/// backward (`BoundaryAssembler`).
 /// Malformed streams reject before any root is written.
 pub struct IsobmffChunker {
     walker: Walker,

@@ -24,7 +24,7 @@ const FORCED_SEAM_LIMIT: usize = GENERIC_CDC_CHUNK_MAX_BYTES - 8192;
 /// (explicit lengths), or FLAC metadata blocks followed by the audio
 /// region — plus leading `ID3v2` tags and the `ID3v1` trailer. Nothing is
 /// decoded; CRC fields are framing-skipped, never verified (checking
-/// them would be decoding, <ADR number="0014" />).
+/// them would be decoding (the profile only finds boundaries).
 ///
 /// Two region kinds drive the cuts. **Framed** regions (frames,
 /// headers, the trailer) cut only at unit seams — every chunk is a
