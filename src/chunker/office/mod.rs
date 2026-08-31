@@ -2,7 +2,7 @@
 //! `ooxml-ber-v1` (byte-exact-reversible), both part-aware.
 
 mod ber;
-mod canonical;
+pub(crate) mod canonical;
 mod fault;
 mod kind;
 mod observer;

@@ -8,7 +8,7 @@ use super::super::records::MemberSizes;
 
 /// What the walker saw, as it saw it. Byte-level data arrives
 /// per byte (the walker is a per-byte machine); observers buffer.
-pub(in crate::chunker) trait ZipEvents {
+pub(crate) trait ZipEvents {
     /// A local file header completed: `name` bytes, the compression
     /// `method`, whether the general-purpose flags carried the
     /// UTF-8 bit, and the size claims (`None` for an unknown-size
@@ -18,10 +18,11 @@ pub(in crate::chunker) trait ZipEvents {
         name: &[u8],
         method: u16,
         utf8_flag: bool,
+        encrypted: bool,
         sizes: Option<MemberSizes>,
         crc: u32,
     ) {
-        let _ = (name, method, utf8_flag, sizes, crc);
+        let _ = (name, method, utf8_flag, encrypted, sizes, crc);
     }
 
     /// One member data byte (compressed bytes as stored).
@@ -41,6 +42,6 @@ pub(in crate::chunker) trait ZipEvents {
 }
 
 /// The no-op tap `zip-v1` walks with.
-pub(in crate::chunker) struct NoEvents;
+pub(crate) struct NoEvents;
 
 impl ZipEvents for NoEvents {}

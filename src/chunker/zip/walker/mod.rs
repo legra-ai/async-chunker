@@ -13,5 +13,5 @@ mod dispatch;
 mod events;
 mod state;
 
-pub(in crate::chunker) use core::Walker;
-pub(in crate::chunker) use events::{NoEvents, ZipEvents};
+pub(crate) use core::Walker;
+pub(crate) use events::{NoEvents, ZipEvents};

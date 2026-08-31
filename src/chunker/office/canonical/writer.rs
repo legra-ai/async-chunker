@@ -11,13 +11,13 @@
 //! offset requires them.
 
 /// One member's central-directory facts.
-pub(super) struct CentralEntry {
-    pub(super) name: Box<[u8]>,
-    pub(super) utf8: bool,
-    pub(super) crc: u32,
-    pub(super) len: u64,
-    pub(super) offset: u64,
-    pub(super) descriptor: bool,
+pub(crate) struct CentralEntry {
+    pub(crate) name: Box<[u8]>,
+    pub(crate) utf8: bool,
+    pub(crate) crc: u32,
+    pub(crate) len: u64,
+    pub(crate) offset: u64,
+    pub(crate) descriptor: bool,
 }
 
 const FLAG_DESCRIPTOR: u16 = 1 << 3;
@@ -44,7 +44,7 @@ const fn needs_zip64_len(len: u64) -> bool {
 
 /// The canonical local header for a member whose decoded size and
 /// CRC are already known (the normal Office case).
-pub(super) fn local_header_known(name: &[u8], utf8: bool, crc: u32, len: u64) -> Vec<u8> {
+pub(crate) fn local_header_known(name: &[u8], utf8: bool, crc: u32, len: u64) -> Vec<u8> {
     let zip64 = needs_zip64_len(len);
     let mut out = Vec::with_capacity(30 + name.len() + 20);
     out.extend_from_slice(&[0x50, 0x4B, 0x03, 0x04]);
@@ -77,7 +77,7 @@ pub(super) fn local_header_known(name: &[u8], utf8: bool, crc: u32, len: u64) ->
 
 /// The canonical local header for an unknown-size member: zero
 /// sizes, descriptor flag; the descriptor closes it.
-pub(super) fn local_header_unknown(name: &[u8], utf8: bool) -> Vec<u8> {
+pub(crate) fn local_header_unknown(name: &[u8], utf8: bool) -> Vec<u8> {
     let mut out = Vec::with_capacity(30 + name.len());
     out.extend_from_slice(&[0x50, 0x4B, 0x03, 0x04]);
     put16(&mut out, VERSION_PLAIN);
@@ -95,7 +95,7 @@ pub(super) fn local_header_unknown(name: &[u8], utf8: bool) -> Vec<u8> {
 }
 
 /// The signed 32-bit data descriptor closing an unknown-size member.
-pub(super) fn descriptor(crc: u32, len: u32) -> Vec<u8> {
+pub(crate) fn descriptor(crc: u32, len: u32) -> Vec<u8> {
     let mut out = Vec::with_capacity(16);
     out.extend_from_slice(&[0x50, 0x4B, 0x07, 0x08]);
     put32(&mut out, crc);
@@ -166,7 +166,7 @@ fn central_header(entry: &CentralEntry) -> Vec<u8> {
 
 /// The canonical central directory and end records, given the
 /// members and the canonical offset where the directory begins.
-pub(super) fn tail(entries: &[CentralEntry], central_offset: u64) -> Vec<u8> {
+pub(crate) fn tail(entries: &[CentralEntry], central_offset: u64) -> Vec<u8> {
     let mut out = Vec::new();
     for entry in entries {
         let header = central_header(entry);

@@ -114,6 +114,44 @@ this crate makes is narrower and dependable: **the same bytes, in the same
 profile, always become the same chunks — wherever they sit in the file and
 whatever surrounds them.**
 
+## Decomposing compound containers
+
+Chunking treats a file as one byte stream; the **decomposition
+adapter** (`decompose::Decomposer`) treats ZIP and TAR archives, wrapped
+forms (`.tar.gz`, `.tgz`, bare `.gz`), and Office packages as what they
+are: containers of member files. Push the compound's bytes and a
+[`DecompositionSink`][DecompositionSink] receives typed, bounded events —
+`container_start`, directory/link `entry`s, `member_start` with the
+member's normalized safe path and **inferred media type**, one
+decompressed `member_bytes` stream at a time, `member_end`, and
+`container_end` with the facts a deterministic reconstruction needs. A
+member that is itself a recognized container is walked recursively
+(bounded depth, currently 8 levels), its events arriving one depth down.
+The adapter never retains a whole member, a member index, or a nested
+tree — state is one bounded reader per open level.
+
+Member media types are inferred, since nothing inside an archive declares
+one: a frozen extension table plays the *declared* side and the byte-prefix
+detector the *detected* side, under the same declared-beats-detected rule
+as ingest. Recursion into a nested container happens only when the bytes
+positively identify one and the name does not contradict it.
+
+There are exactly two successful outcomes. A full walk is a
+*decomposition*; anything the adapter cannot faithfully walk — encryption
+(no key support yet: encrypted input is always opaque), unsupported
+compression, sparse TAR members, malformed structure, unsafe (`..` or
+absolute) paths, or a depth/member/metadata bound — ends the stream with a
+typed `Opaque { reason }`, telling the caller to store the exact source
+bytes as one explicitly-flagged opaque blob instead. Never a silent
+pretend-decomposition.
+
+The `decompose::writer` module holds the deterministic canonical writers
+(`CanonicalTarWriter`, `CanonicalZipWriter`, `GzipWriter` at a pinned
+level) that reconstruct a container from member streams. Reconstruction is
+deterministic for a given crate version and logical content — canonical,
+not byte-identical to the original upload; byte-identity is a storage
+decision (keep the source bytes), not a reconstruction promise.
+
 ## Supported formats
 
 Every profile shares one chunk-size envelope — **16 KiB minimum, 64 KiB
@@ -249,6 +287,8 @@ Tokio runtime beyond what the caller's reader already requires.
 [ProfileRegistry]: https://docs.rs/async-chunker/latest/async_chunker/struct.ProfileRegistry.html
 [Detector]: https://docs.rs/async-chunker/latest/async_chunker/struct.Detector.html
 [PrefixReplay]: https://docs.rs/async-chunker/latest/async_chunker/struct.PrefixReplay.html
+
+[DecompositionSink]: https://docs.rs/async-chunker/latest/async_chunker/decompose/trait.DecompositionSink.html
 
 ## License
 

@@ -36,7 +36,7 @@ impl OfficeKind {
 
     /// The kind whose main part `name` is, if any.
     #[must_use]
-    pub(super) fn of_main_part(name: &[u8]) -> Option<Self> {
+    pub(crate) fn of_main_part(name: &[u8]) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.main_part() == name)
     }
 

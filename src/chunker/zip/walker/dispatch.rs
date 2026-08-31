@@ -165,7 +165,14 @@ impl Walker {
                 let zip64 = header.needs_zip64();
                 let header_len = LocalHeader::FIXED_LEN + 4 + self.variable.len();
                 if header.has_descriptor && header.raw_compressed() == 0 {
-                    events.local_header(name, header.method, header.utf8_flag, None, 0);
+                    events.local_header(
+                        name,
+                        header.method,
+                        header.utf8_flag,
+                        header.encrypted,
+                        None,
+                        0,
+                    );
                     self.state = State::DataScan {
                         consumed: 0,
                         method: header.method,
@@ -179,6 +186,7 @@ impl Walker {
                     name,
                     header.method,
                     header.utf8_flag,
+                    header.encrypted,
                     Some(sizes),
                     header.crc,
                 );

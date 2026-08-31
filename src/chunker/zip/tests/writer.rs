@@ -10,7 +10,7 @@ use flate2::write::DeflateEncoder;
 
 /// How one member is framed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::chunker) enum Framing {
+pub(crate) enum Framing {
     /// Sizes in the local header, no descriptor.
     Plain,
     /// Sizes zero in the local header; a signed descriptor follows.
@@ -23,15 +23,15 @@ pub(in crate::chunker) enum Framing {
 }
 
 /// One member to write.
-pub(in crate::chunker) struct Member<'a> {
-    pub(in crate::chunker) name: &'a str,
-    pub(in crate::chunker) bytes: &'a [u8],
-    pub(in crate::chunker) deflate: bool,
-    pub(in crate::chunker) framing: Framing,
+pub(crate) struct Member<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) bytes: &'a [u8],
+    pub(crate) deflate: bool,
+    pub(crate) framing: Framing,
 }
 
 impl<'a> Member<'a> {
-    pub(in crate::chunker) const fn stored(name: &'a str, bytes: &'a [u8]) -> Self {
+    pub(crate) const fn stored(name: &'a str, bytes: &'a [u8]) -> Self {
         Self {
             name,
             bytes,
@@ -40,7 +40,7 @@ impl<'a> Member<'a> {
         }
     }
 
-    pub(in crate::chunker) const fn deflated(name: &'a str, bytes: &'a [u8]) -> Self {
+    pub(crate) const fn deflated(name: &'a str, bytes: &'a [u8]) -> Self {
         Self {
             name,
             bytes,
@@ -49,7 +49,7 @@ impl<'a> Member<'a> {
         }
     }
 
-    pub(in crate::chunker) const fn framed(self, framing: Framing) -> Self {
+    pub(crate) const fn framed(self, framing: Framing) -> Self {
         Self { framing, ..self }
     }
 }
@@ -67,11 +67,11 @@ struct Written {
 
 /// Archive-level options.
 #[derive(Debug, Clone, Copy, Default)]
-pub(in crate::chunker) struct Options<'a> {
+pub(crate) struct Options<'a> {
     /// Emit a ZIP64 end record + locator and mark the EOCD counts
     /// as deferred.
-    pub(in crate::chunker) zip64_end: bool,
-    pub(in crate::chunker) comment: &'a [u8],
+    pub(crate) zip64_end: bool,
+    pub(crate) comment: &'a [u8],
 }
 
 fn put16(out: &mut Vec<u8>, value: u16) {
@@ -99,7 +99,7 @@ fn deflate(bytes: &[u8]) -> Vec<u8> {
 }
 
 /// Write a complete archive.
-pub(in crate::chunker) fn archive(members: &[Member<'_>], options: Options<'_>) -> Vec<u8> {
+pub(crate) fn archive(members: &[Member<'_>], options: Options<'_>) -> Vec<u8> {
     let mut out = Vec::new();
     let mut written = Vec::new();
     for member in members {
