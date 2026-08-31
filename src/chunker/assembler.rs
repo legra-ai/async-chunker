@@ -7,7 +7,23 @@
 use super::gear::{self, GearHash};
 use crate::constants::{
     GENERIC_CDC_CHUNK_MAX_BYTES, GENERIC_CDC_CHUNK_MIN_BYTES, GENERIC_CDC_CHUNK_TARGET_BYTES,
+    STRUCTURED_TEXT_RELAXED_MASK, STRUCTURED_TEXT_STRICT_MASK,
 };
+
+/// How the assembler judges content-defined cuts inside the current
+/// region.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum CutGate {
+    /// Every byte is a candidate (binary payloads).
+    PerByte,
+    /// Only textual seams — a line end or a tag close — are
+    /// candidates, under the structured-text masks. Low-entropy
+    /// periodic text starves the per-byte gear of distinct window
+    /// states, degrading cuts to offset-aligned forced cuts that
+    /// never re-synchronize after an insertion; seam gating keeps
+    /// boundaries on content.
+    TextSeam,
+}
 
 /// Assembles chunks from a byte stream whose structure a walker
 /// reports as boundaries.
@@ -33,6 +49,9 @@ pub(super) struct BoundaryAssembler {
     hash: GearHash,
     strict_mask: u64,
     relaxed_mask: u64,
+    gate: CutGate,
+    /// The byte just pushed ended a textual seam.
+    at_seam: bool,
     /// A structural boundary closes the chunk at this size; the
     /// container profiles use the shared minimum, the document
     /// profiles a lower unit-aligned one.
@@ -58,10 +77,17 @@ impl BoundaryAssembler {
             hash: GearHash::new(seed),
             strict_mask: gear::generic_strict_mask(),
             relaxed_mask: gear::generic_relaxed_mask(),
+            gate: CutGate::PerByte,
+            at_seam: false,
             unit_min,
             buffer: Vec::with_capacity(GENERIC_CDC_CHUNK_MAX_BYTES),
             held: Vec::with_capacity(GENERIC_CDC_CHUNK_MAX_BYTES),
         }
+    }
+
+    /// Select how cuts are judged inside the region that follows.
+    pub(super) fn set_gate(&mut self, gate: CutGate) {
+        self.gate = gate;
     }
 
     /// The walker reports that the next byte begins a structural
@@ -110,6 +136,7 @@ impl BoundaryAssembler {
     pub(super) fn push(&mut self, byte: u8, emit: &mut dyn FnMut(&[u8])) {
         self.buffer.push(byte);
         self.hash.update(byte);
+        self.at_seam = matches!(byte, b'\n' | b'>');
         if self.cut_here() {
             self.close_chunk(emit);
         }
@@ -144,12 +171,28 @@ impl BoundaryAssembler {
         if len >= GENERIC_CDC_CHUNK_MAX_BYTES {
             return true;
         }
-        let mask = if len < GENERIC_CDC_CHUNK_TARGET_BYTES {
-            self.strict_mask
-        } else {
-            self.relaxed_mask
-        };
-        self.hash.cuts(mask)
+        let before_target = len < GENERIC_CDC_CHUNK_TARGET_BYTES;
+        match self.gate {
+            CutGate::PerByte => {
+                let mask = if before_target {
+                    self.strict_mask
+                } else {
+                    self.relaxed_mask
+                };
+                self.hash.cuts(mask)
+            }
+            CutGate::TextSeam => {
+                if !self.at_seam {
+                    return false;
+                }
+                let mask = if before_target {
+                    STRUCTURED_TEXT_STRICT_MASK
+                } else {
+                    STRUCTURED_TEXT_RELAXED_MASK
+                };
+                self.hash.cuts(mask)
+            }
+        }
     }
 
     /// Close the current chunk: the previously held chunk goes out,

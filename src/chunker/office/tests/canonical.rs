@@ -173,3 +173,48 @@ fn noise_members_and_generic_profile_disagree_on_nothing_structural() {
     let bytes = noise("els15/noise-sanity", 64);
     assert_eq!(bytes.len(), 64);
 }
+
+/// Low-entropy, repetitive XML — the shape real tables and
+/// boilerplate produce — starves a per-byte gear of distinct window
+/// states; seam-gated cuts must still re-synchronize after an
+/// insertion so an edited part reuses its unchanged regions.
+#[test]
+fn repetitive_xml_edits_reuse_chunks_within_the_part() {
+    fn document(insert_at: Option<usize>) -> Vec<u8> {
+        let mut out = b"<?xml version=\"1.0\"?>\n<doc>\n".to_vec();
+        for row in 0..12_000 {
+            if insert_at == Some(row) {
+                out.extend_from_slice(b"<row><cell>inserted cell value</cell></row>\n");
+            }
+            out.extend_from_slice(
+                format!("<row><cell>value {}</cell></row>\n", row % 7).as_bytes(),
+            );
+        }
+        out.extend_from_slice(b"</doc>\n");
+        out
+    }
+    let build = |doc: &[u8]| {
+        let members = [
+            Member::deflated("[Content_Types].xml", b"<Types/>"),
+            Member::deflated("word/document.xml", doc),
+        ];
+        archive(&members, Options::default())
+    };
+    let original = canonical_of(&build(&document(None)));
+    let edited = canonical_of(&build(&document(Some(6000))));
+    let original_set: HashSet<&[u8]> = original.iter().map(Vec::as_slice).collect();
+    let total: usize = edited.iter().map(Vec::len).sum();
+    let shared: usize = edited
+        .iter()
+        .filter(|chunk| original_set.contains(chunk.as_slice()))
+        .map(Vec::len)
+        .sum();
+    assert!(
+        edited.iter().all(|chunk| chunk.len() < 256 << 10),
+        "seam cuts must fire before the forced maximum"
+    );
+    assert!(
+        shared * 2 > total,
+        "a mid-part insertion must reuse most chunks: {shared} of {total} shared"
+    );
+}
