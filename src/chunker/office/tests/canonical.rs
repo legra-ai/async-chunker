@@ -186,9 +186,11 @@ fn repetitive_xml_edits_reuse_chunks_within_the_part() {
             if insert_at == Some(row) {
                 out.extend_from_slice(b"<row><cell>inserted cell value</cell></row>\n");
             }
-            out.extend_from_slice(
-                format!("<row><cell>value {}</cell></row>\n", row % 7).as_bytes(),
-            );
+            // Repeated structure with varying values — the shape a
+            // real table has. (Perfectly periodic content has no
+            // content anchors at all; no content-defined scheme can
+            // re-synchronize it, and it falls to forced cuts.)
+            out.extend_from_slice(format!("<row><cell>value {row}</cell></row>\n").as_bytes());
         }
         out.extend_from_slice(b"</doc>\n");
         out
