@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod error;
+mod inflate;
 mod media_type;
 mod probe;
 mod registry;
@@ -9,6 +10,7 @@ mod stream;
 
 mod chunker;
 mod constants;
+pub mod decompose;
 pub mod profile;
 
 pub use chunker::{

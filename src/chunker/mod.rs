@@ -12,11 +12,11 @@ mod generic;
 mod isobmff;
 mod matroska;
 mod mpegts;
-mod office;
+pub(crate) mod office;
 mod pdf;
 mod profile_chunker;
 mod structured_text;
-mod zip;
+pub(crate) mod zip;
 
 #[cfg(test)]
 mod tests;

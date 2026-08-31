@@ -131,11 +131,15 @@ impl ZipEvents for CanonCore {
         name: &[u8],
         method: u16,
         utf8_flag: bool,
+        encrypted: bool,
         sizes: Option<MemberSizes>,
         crc: u32,
     ) {
         if self.fault.is_some() {
             return;
+        }
+        if encrypted {
+            return self.fail(OfficeFault::UnsupportedMethod);
         }
         if let Err(fault) = self.check.member(name) {
             return self.fail(fault);

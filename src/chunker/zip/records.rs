@@ -25,6 +25,8 @@ const METHOD_DEFLATE64: u16 = 9;
 const FLAG_DATA_DESCRIPTOR: u16 = 1 << 3;
 /// The general-purpose flag declaring the name is UTF-8.
 const FLAG_UTF8: u16 = 1 << 11;
+/// The general-purpose flag declaring the member is encrypted.
+const FLAG_ENCRYPTED: u16 = 1 << 0;
 /// Deflate cannot expand beyond 1032:1 (a 258-byte match costs at
 /// least two bits); the slack covers tiny inputs.
 const MAX_DEFLATE_RATIO: u64 = 1032;
@@ -47,9 +49,9 @@ pub(super) fn u64_at(bytes: &[u8], at: usize) -> u64 {
 /// The size claims of one member, checked against the expansion
 /// rules the profile enforces without inflating anything.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::chunker) struct MemberSizes {
-    pub(in crate::chunker) compressed: u64,
-    pub(in crate::chunker) uncompressed: u64,
+pub(crate) struct MemberSizes {
+    pub(crate) compressed: u64,
+    pub(crate) uncompressed: u64,
 }
 
 impl MemberSizes {
@@ -81,6 +83,7 @@ pub(super) struct LocalHeader {
     pub(super) crc: u32,
     pub(super) has_descriptor: bool,
     pub(super) utf8_flag: bool,
+    pub(super) encrypted: bool,
     compressed: u32,
     uncompressed: u32,
     pub(super) name_len: u16,
@@ -96,6 +99,7 @@ impl LocalHeader {
             crc: u32_at(bytes, 10),
             has_descriptor: u16_at(bytes, 2) & FLAG_DATA_DESCRIPTOR != 0,
             utf8_flag: u16_at(bytes, 2) & FLAG_UTF8 != 0,
+            encrypted: u16_at(bytes, 2) & FLAG_ENCRYPTED != 0,
             compressed: u32_at(bytes, 14),
             uncompressed: u32_at(bytes, 18),
             name_len: u16_at(bytes, 22),

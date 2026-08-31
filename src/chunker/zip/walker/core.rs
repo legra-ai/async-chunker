@@ -16,7 +16,7 @@ const _: () = assert!(DESCRIPTOR_MAX <= FIXED_MAX);
 /// The walker. Holds one small fixed buffer, one bounded variable
 /// buffer (name + extra + comment, each at most 65 535 bytes), a few
 /// counters — never the archive.
-pub(in crate::chunker) struct Walker {
+pub(crate) struct Walker {
     pub(super) state: State,
     pub(super) phase: Phase,
     /// Bytes consumed so far (the diagnostic offset).
@@ -32,7 +32,7 @@ pub(in crate::chunker) struct Walker {
 }
 
 impl Walker {
-    pub(in crate::chunker) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             state: State::Signature { len: 0 },
             phase: Phase::Members,
@@ -48,13 +48,13 @@ impl Walker {
     }
 
     /// Bytes consumed so far.
-    pub(in crate::chunker) const fn offset(&self) -> u64 {
+    pub(crate) const fn offset(&self) -> u64 {
         self.offset
     }
 
     /// Whether the next byte begins a member (or the central
     /// directory) — the profile's cut candidate.
-    pub(in crate::chunker) fn at_member_boundary(&self) -> bool {
+    pub(crate) fn at_member_boundary(&self) -> bool {
         matches!(self.state, State::Signature { len: 0 }) && self.phase == Phase::Members
     }
 
@@ -63,7 +63,7 @@ impl Walker {
     /// this byte completes the header of a **large** member —
     /// compressed size at least the minimum chunk size — so the
     /// assembler can realign the chunk to the member.
-    pub(in crate::chunker) fn consume(
+    pub(crate) fn consume(
         &mut self,
         byte: u8,
         events: &mut dyn ZipEvents,
@@ -74,7 +74,7 @@ impl Walker {
     }
 
     /// The stream ended: the archive must be complete.
-    pub(in crate::chunker) fn finish(&self) -> Result<(), ZipFault> {
+    pub(crate) fn finish(&self) -> Result<(), ZipFault> {
         if self.phase == Phase::Complete && matches!(self.state, State::Signature { len: 0 }) {
             Ok(())
         } else {

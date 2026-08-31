@@ -107,6 +107,7 @@ impl ZipEvents for BerEvents<'_> {
         name: &[u8],
         _method: u16,
         _utf8_flag: bool,
+        _encrypted: bool,
         _sizes: Option<MemberSizes>,
         _crc: u32,
     ) {

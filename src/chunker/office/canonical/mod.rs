@@ -5,6 +5,6 @@
 mod chunker;
 mod core;
 mod decoder;
-mod writer;
+pub(crate) mod writer;
 
 pub use chunker::OoxmlChunker;
