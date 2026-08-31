@@ -89,8 +89,9 @@ impl ProfileRegistry {
 
     /// Every media-type essence a profile serves (none for the
     /// generic profile, which serves everything unlisted).
-    pub fn essences(&self, profile: ChunkingProfile) -> impl Iterator<Item = &'static str> {
-        self.families
+    pub fn essences(&self, profile: ChunkingProfile) -> impl Iterator<Item = &'static str> + use<> {
+        let families = self.families;
+        families
             .iter()
             .filter(move |family| family.profile == profile)
             .flat_map(|family| family.essences.iter().copied())
