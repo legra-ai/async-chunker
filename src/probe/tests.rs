@@ -230,3 +230,28 @@ fn v2_separates_ooxml_pdf_and_plain_zip() {
     );
     assert_eq!(Detector::default().detect(&ooxml), detector.detect(&ooxml));
 }
+
+#[test]
+fn a_detected_ooxml_package_confirms_ber_and_zip_declarations() {
+    let ooxml = Detection::Recognized(ChunkingProfile::OoxmlV1);
+    assert_eq!(
+        ooxml.reconcile(ChunkingProfile::OoxmlBerV1),
+        Ok(ChunkingProfile::OoxmlBerV1),
+        "BER is the byte-exact mode of the same format"
+    );
+    assert_eq!(
+        ooxml.reconcile(ChunkingProfile::ZipV1),
+        Ok(ChunkingProfile::ZipV1),
+        "an OOXML package is a ZIP container"
+    );
+    assert_eq!(
+        ooxml.reconcile(ChunkingProfile::OoxmlV1),
+        Ok(ChunkingProfile::OoxmlV1)
+    );
+    assert!(ooxml.reconcile(ChunkingProfile::PdfV1).is_err());
+    let zip = Detection::Recognized(ChunkingProfile::ZipV1);
+    assert!(
+        zip.reconcile(ChunkingProfile::OoxmlBerV1).is_err(),
+        "a plain ZIP is not an Office package"
+    );
+}

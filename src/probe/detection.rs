@@ -52,7 +52,11 @@ impl Detection {
     /// - an unrecognized prefix contradicts nothing — the specialist
     ///   engine remains the authority on malformed input;
     /// - a recognized or ambiguous detection that includes the
-    ///   declared specialist confirms it.
+    ///   declared specialist confirms it;
+    /// - a detected `ooxml-v1` package also confirms a declared
+    ///   `ooxml-ber-v1` (the byte-exact mode of the same format) and
+    ///   a declared `zip-v1` (an OOXML package *is* a ZIP container,
+    ///   and ZIP is the broader claim).
     ///
     /// # Errors
     ///
@@ -64,6 +68,11 @@ impl Detection {
         if declared == ChunkingProfile::GenericCdcV1
             || detected.is_empty()
             || detected.contains(declared)
+            || (detected.contains(ChunkingProfile::OoxmlV1)
+                && matches!(
+                    declared,
+                    ChunkingProfile::OoxmlBerV1 | ChunkingProfile::ZipV1
+                ))
         {
             return Ok(declared);
         }
