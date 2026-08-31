@@ -1,7 +1,7 @@
 //! [`OoxmlChunker`] — the `ooxml-v1` canonicalizing streaming
 //! chunker.
 
-use super::super::super::assembler::BoundaryAssembler;
+use super::super::super::assembler::{BoundaryAssembler, CutGate};
 use super::super::super::gear;
 use super::super::super::profile_chunker::Chunker;
 use super::super::super::zip::walker::Walker;
@@ -88,6 +88,11 @@ impl OoxmlChunker {
         while let Some(step) = self.core.next_step() {
             match step {
                 CanonStep::Boundary => self.assembler.boundary(emit),
+                CanonStep::TextRegion(text) => self.assembler.set_gate(if text {
+                    CutGate::TextSeam
+                } else {
+                    CutGate::PerByte
+                }),
                 CanonStep::LargeUnit(header_len) => {
                     self.assembler.large_unit_starts(header_len, emit);
                 }

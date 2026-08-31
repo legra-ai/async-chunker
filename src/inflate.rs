@@ -74,7 +74,16 @@ impl RawInflater {
 
     /// The compressed input ended: flush; the stream must have
     /// reached its end marker.
+    ///
+    /// Drain with `None` first — `MZFlush::Finish` expects the whole
+    /// remaining output to fit the call's window, so a highly
+    /// compressible member (small staged input, large pending
+    /// output) must be decoded through the windowed loop before the
+    /// finishing call.
     pub(crate) fn close(&mut self) -> Result<(), InflateFault> {
+        if !self.done {
+            self.drain(MZFlush::None)?;
+        }
         if !self.done {
             self.drain(MZFlush::Finish)?;
         }

@@ -23,6 +23,9 @@ const MAX_NAME_BYTES: usize = 8 << 20;
 pub(super) enum CanonStep {
     /// A structural boundary precedes the next bytes.
     Boundary,
+    /// The member that follows is XML-shaped text: judge cuts at
+    /// textual seams (the frozen `*.xml` / `*.rels` name rule).
+    TextRegion(bool),
     /// The bytes just enqueued began a large unit whose canonical
     /// header is this long — realign so it starts a chunk.
     LargeUnit(usize),
@@ -168,6 +171,8 @@ impl ZipEvents for CanonCore {
             observer.member_start(name, header_offset);
         }
         self.steps.push_back(CanonStep::Boundary);
+        self.steps
+            .push_back(CanonStep::TextRegion(is_xml_part(name)));
         self.enqueue_bytes(header);
         if large {
             self.steps.push_back(CanonStep::LargeUnit(header_len));
@@ -249,7 +254,15 @@ impl ZipEvents for CanonCore {
             observer.package_end(self.check.members_seen());
         }
         self.steps.push_back(CanonStep::Boundary);
+        self.steps.push_back(CanonStep::TextRegion(false));
         let tail = writer::tail(&self.entries, self.canonical_offset);
         self.enqueue_bytes(tail);
     }
+}
+
+/// The frozen name rule for seam-gated members: OOXML part XML and
+/// relationship files.
+fn is_xml_part(name: &[u8]) -> bool {
+    let lower: Vec<u8> = name.iter().map(u8::to_ascii_lowercase).collect();
+    lower.ends_with(b".xml") || lower.ends_with(b".rels")
 }
