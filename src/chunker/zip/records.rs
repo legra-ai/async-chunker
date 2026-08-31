@@ -23,6 +23,8 @@ const METHOD_DEFLATE: u16 = 8;
 const METHOD_DEFLATE64: u16 = 9;
 /// The general-purpose flag announcing a trailing data descriptor.
 const FLAG_DATA_DESCRIPTOR: u16 = 1 << 3;
+/// The general-purpose flag declaring the name is UTF-8.
+const FLAG_UTF8: u16 = 1 << 11;
 /// Deflate cannot expand beyond 1032:1 (a 258-byte match costs at
 /// least two bits); the slack covers tiny inputs.
 const MAX_DEFLATE_RATIO: u64 = 1032;
@@ -45,9 +47,9 @@ pub(super) fn u64_at(bytes: &[u8], at: usize) -> u64 {
 /// The size claims of one member, checked against the expansion
 /// rules the profile enforces without inflating anything.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct MemberSizes {
-    pub(super) compressed: u64,
-    pub(super) uncompressed: u64,
+pub(in crate::chunker) struct MemberSizes {
+    pub(in crate::chunker) compressed: u64,
+    pub(in crate::chunker) uncompressed: u64,
 }
 
 impl MemberSizes {
@@ -76,7 +78,9 @@ impl MemberSizes {
 #[derive(Debug, Clone, Copy)]
 pub(super) struct LocalHeader {
     pub(super) method: u16,
+    pub(super) crc: u32,
     pub(super) has_descriptor: bool,
+    pub(super) utf8_flag: bool,
     compressed: u32,
     uncompressed: u32,
     pub(super) name_len: u16,
@@ -89,12 +93,20 @@ impl LocalHeader {
     pub(super) fn parse(bytes: &[u8; Self::FIXED_LEN]) -> Self {
         Self {
             method: u16_at(bytes, 4),
+            crc: u32_at(bytes, 10),
             has_descriptor: u16_at(bytes, 2) & FLAG_DATA_DESCRIPTOR != 0,
+            utf8_flag: u16_at(bytes, 2) & FLAG_UTF8 != 0,
             compressed: u32_at(bytes, 14),
             uncompressed: u32_at(bytes, 18),
             name_len: u16_at(bytes, 22),
             extra_len: u16_at(bytes, 24),
         }
+    }
+
+    /// The raw 32-bit compressed-size field (before ZIP64
+    /// resolution) — zero for an unknown-size descriptor member.
+    pub(super) const fn raw_compressed(self) -> u32 {
+        self.compressed
     }
 
     /// Whether the sizes defer to a ZIP64 extra field.

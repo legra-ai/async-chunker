@@ -199,3 +199,34 @@ fn profile_set_iterates_in_registry_order() {
     );
     assert!(!set.contains(ChunkingProfile::ZipV1));
 }
+
+#[test]
+fn v2_separates_ooxml_pdf_and_plain_zip() {
+    let detector = Detector::V2;
+    let mut ooxml = b"PK\x03\x04\x14\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x13\x00\x00\x00".to_vec();
+    ooxml.extend_from_slice(b"[Content_Types].xml");
+    assert_eq!(
+        detector.detect(&ooxml),
+        Detection::Recognized(ChunkingProfile::OoxmlV1)
+    );
+    let mut plain = ooxml.clone();
+    plain[30] = b'x';
+    assert_eq!(
+        detector.detect(&plain),
+        Detection::Recognized(ChunkingProfile::ZipV1)
+    );
+    assert_eq!(
+        detector.detect(b"PK\x05\x06\x00\x00"),
+        Detection::Recognized(ChunkingProfile::ZipV1)
+    );
+    assert_eq!(
+        detector.detect(b"%PDF-1.7\n%\xE2\xE3\xCF\xD3\n"),
+        Detection::Recognized(ChunkingProfile::PdfV1)
+    );
+    assert_eq!(
+        Detector::V1.detect(&ooxml),
+        Detection::Recognized(ChunkingProfile::ZipV1),
+        "v1 stays frozen"
+    );
+    assert_eq!(Detector::default().detect(&ooxml), detector.detect(&ooxml));
+}

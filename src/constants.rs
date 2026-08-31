@@ -66,3 +66,12 @@ pub const MAX_MEDIA_TYPE_NAME_BYTES: usize = 127;
 /// Most parameters a [`MediaType`](crate::MediaType) may carry; a
 /// media type is a short label, not a property bag.
 pub const MAX_MEDIA_TYPE_PARAMETERS: usize = 16;
+
+/// Unit-aligned minimum chunk length for the document profiles
+/// (`ooxml-v1`, `ooxml-ber-v1`, `pdf-v1`): a structural unit (an
+/// OOXML part, a PDF object run) of at least this many bytes closes
+/// the chunk before it, so an edited slide, sheet, or object
+/// invalidates only its own chunk. Deliberately below the generic
+/// 16 KiB minimum — part isolation buys more reuse than fewer
+/// blocks for these formats.
+pub const DOCUMENT_UNIT_CHUNK_MIN_BYTES: usize = 4 << 10;

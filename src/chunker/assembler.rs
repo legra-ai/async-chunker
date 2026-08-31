@@ -33,6 +33,10 @@ pub(super) struct BoundaryAssembler {
     hash: GearHash,
     strict_mask: u64,
     relaxed_mask: u64,
+    /// A structural boundary closes the chunk at this size; the
+    /// container profiles use the shared minimum, the document
+    /// profiles a lower unit-aligned one.
+    unit_min: usize,
     // bounded: capacity capped at the maximum chunk size.
     buffer: Vec<u8>,
     // bounded: one closed chunk awaiting small trailing units.
@@ -40,12 +44,21 @@ pub(super) struct BoundaryAssembler {
 }
 
 impl BoundaryAssembler {
-    /// An assembler hashing with the gear table derived from `seed`.
+    /// An assembler hashing with the gear table derived from `seed`,
+    /// closing at structural boundaries from the shared minimum.
     pub(super) fn new(seed: &str) -> Self {
+        Self::with_unit_min(seed, GENERIC_CDC_CHUNK_MIN_BYTES)
+    }
+
+    /// An assembler whose structural boundaries close the chunk at
+    /// `unit_min` instead of the shared minimum. Content-defined
+    /// cuts between boundaries keep the shared envelope.
+    pub(super) fn with_unit_min(seed: &str, unit_min: usize) -> Self {
         Self {
             hash: GearHash::new(seed),
             strict_mask: gear::generic_strict_mask(),
             relaxed_mask: gear::generic_relaxed_mask(),
+            unit_min,
             buffer: Vec::with_capacity(GENERIC_CDC_CHUNK_MAX_BYTES),
             held: Vec::with_capacity(GENERIC_CDC_CHUNK_MAX_BYTES),
         }
@@ -54,7 +67,7 @@ impl BoundaryAssembler {
     /// The walker reports that the next byte begins a structural
     /// unit.
     pub(super) fn boundary(&mut self, emit: &mut dyn FnMut(&[u8])) {
-        if self.buffer.len() >= GENERIC_CDC_CHUNK_MIN_BYTES {
+        if self.buffer.len() >= self.unit_min {
             self.close_chunk(emit);
         } else if !self.held.is_empty()
             && !self.buffer.is_empty()

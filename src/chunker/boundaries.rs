@@ -8,6 +8,10 @@ use crate::profile::ChunkingProfile;
 
 /// Chunk boundaries of an in-memory payload, as end offsets.
 ///
+/// The offsets address the profile's **canonical form** of the
+/// payload (the payload itself for every profile except the
+/// canonicalizing `ooxml-v1`).
+///
 /// Convenience over the streaming chunkers for callers that already
 /// hold the whole value (tests, measurement harnesses); streaming
 /// ingest drives a [`ProfileChunker`] directly.

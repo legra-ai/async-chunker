@@ -10,7 +10,7 @@ const PROFILE: &str = ChunkingProfile::ZipV1.name();
 /// A structural rejection. Every variant carries the frozen
 /// diagnostic text that reaches the typed error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ZipFault {
+pub(in crate::chunker) enum ZipFault {
     /// Four bytes where a record must begin are no known signature.
     UnknownSignature,
     /// A local file header after the central directory began.
@@ -48,7 +48,7 @@ pub(super) enum ZipFault {
 
 impl ZipFault {
     /// The frozen diagnostic text.
-    pub(super) const fn detail(self) -> &'static str {
+    pub(in crate::chunker) const fn detail(self) -> &'static str {
         match self {
             Self::UnknownSignature => "unknown ZIP record signature",
             Self::MemberAfterCentralDirectory => "local file header after the central directory",

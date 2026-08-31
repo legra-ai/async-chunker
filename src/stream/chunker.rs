@@ -45,7 +45,8 @@ impl AsyncChunker {
         Self::new(registry.select(media_type))
     }
 
-    /// Probes the first bytes of `reader` with [`Detector::V1`],
+    /// Probes the first bytes of `reader` with the default
+    /// [`Detector`],
     /// chunks with the recognized specialist — or the explicit
     /// generic profile when nothing matched — and replays the probed
     /// prefix so no byte is lost.
@@ -59,13 +60,14 @@ impl AsyncChunker {
     where
         R: AsyncRead + Unpin + Send + 'static,
     {
-        let (detection, replay) = Detector::V1.probe(reader).await?;
+        let (detection, replay) = Detector::default().probe(reader).await?;
         Ok(Self::new(detection.resolve()?)?.chunk(replay))
     }
 
     /// Chunks `reader` with the profile `registry` selects for the
     /// declared `media_type`, after probing the first bytes with
-    /// [`Detector::V1`] and refusing a positive contradiction (see
+    /// the default [`Detector`] and refusing a positive
+    /// contradiction (see
     /// [`Detection::reconcile`](crate::Detection::reconcile)).
     ///
     /// # Errors
@@ -82,7 +84,7 @@ impl AsyncChunker {
         R: AsyncRead + Unpin + Send + 'static,
     {
         let declared = registry.select(media_type);
-        let (detection, replay) = Detector::V1.probe(reader).await?;
+        let (detection, replay) = Detector::default().probe(reader).await?;
         Ok(Self::new(detection.reconcile(declared)?)?.chunk(replay))
     }
 
@@ -92,6 +94,11 @@ impl AsyncChunker {
     /// chunk before processing the next input byte. It never collects the
     /// input or the output chunks, so a caller can apply backpressure by
     /// awaiting the next item.
+    ///
+    /// The chunks concatenate to the profile's **canonical form** of
+    /// the input: the input itself for every profile except the
+    /// canonicalizing `ooxml-v1`, whose chunks reproduce the
+    /// package's deterministic canonical repackaging.
     ///
     /// # Panics
     ///

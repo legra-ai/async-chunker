@@ -9,6 +9,8 @@ use super::generic::GenericCdcChunker;
 use super::isobmff::IsobmffChunker;
 use super::matroska::MatroskaChunker;
 use super::mpegts::MpegtsChunker;
+use super::office::{OoxmlBerChunker, OoxmlChunker, PackageObserver};
+use super::pdf::PdfChunker;
 use super::structured_text::StructuredTextChunker;
 use super::zip::ZipChunker;
 use crate::profile::ChunkingProfile;
@@ -18,6 +20,11 @@ use crate::profile::ChunkingProfile;
 /// Pure CPU — bytes in, boundaries out — holding at most one
 /// maximum-size chunk of state. Boundaries are a pure function of
 /// the profile and the bytes, never of how the bytes were windowed.
+///
+/// Emitted chunks concatenate to the profile's **canonical form**
+/// of the input. For every profile except `ooxml-v1` that is the
+/// input itself; the canonicalizing `ooxml-v1` emits the package's
+/// deterministic canonical repackaging instead.
 pub trait Chunker {
     /// Feed one input window; `emit` receives every chunk completed
     /// within it.
@@ -58,6 +65,13 @@ pub enum ProfileChunker {
     Mpegts(Box<MpegtsChunker>),
     /// `framed-audio-v1`.
     FramedAudio(Box<FramedAudioChunker>),
+    /// `ooxml-v1` (canonicalizing — chunks concatenate to the
+    /// package's canonical form, not to the input).
+    Ooxml(Box<OoxmlChunker>),
+    /// `ooxml-ber-v1`.
+    OoxmlBer(Box<OoxmlBerChunker>),
+    /// `pdf-v1`.
+    Pdf(Box<PdfChunker>),
 }
 
 impl ProfileChunker {
@@ -78,6 +92,22 @@ impl ProfileChunker {
             ChunkingProfile::MatroskaV1 => Ok(Self::Matroska(Box::default())),
             ChunkingProfile::MpegtsV1 => Ok(Self::Mpegts(Box::default())),
             ChunkingProfile::FramedAudioV1 => Ok(Self::FramedAudio(Box::default())),
+            ChunkingProfile::OoxmlV1 => Ok(Self::Ooxml(Box::default())),
+            ChunkingProfile::OoxmlBerV1 => Ok(Self::OoxmlBer(Box::default())),
+            ChunkingProfile::PdfV1 => Ok(Self::Pdf(Box::default())),
+        }
+    }
+
+    /// Attach a package-event tap. Only the canonicalizing
+    /// `ooxml-v1` chunker observes package events; returns whether
+    /// the observer was accepted.
+    pub fn set_package_observer(&mut self, observer: Box<dyn PackageObserver>) -> bool {
+        match self {
+            Self::Ooxml(chunker) => {
+                chunker.set_observer(observer);
+                true
+            }
+            _ => false,
         }
     }
 
@@ -90,6 +120,9 @@ impl ProfileChunker {
             Self::Matroska(chunker) => chunker.as_mut(),
             Self::Mpegts(chunker) => chunker.as_mut(),
             Self::FramedAudio(chunker) => chunker.as_mut(),
+            Self::Ooxml(chunker) => chunker.as_mut(),
+            Self::OoxmlBer(chunker) => chunker.as_mut(),
+            Self::Pdf(chunker) => chunker.as_mut(),
         }
     }
 }

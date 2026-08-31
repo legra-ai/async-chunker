@@ -63,6 +63,15 @@ impl ProfileRegistry {
         families: V1_FAMILIES,
     };
 
+    /// Registry version 2: the Office Open XML media types move from
+    /// `zip-v1` to the canonicalizing `ooxml-v1` (the byte-exact
+    /// `ooxml-ber-v1` is a policy selection, never a registry
+    /// mapping), and `application/pdf` gains `pdf-v1`.
+    pub const V2: Self = Self {
+        version: RegistryVersion(2),
+        families: V2_FAMILIES,
+    };
+
     /// The registry's version.
     #[must_use]
     pub const fn version(&self) -> RegistryVersion {
@@ -109,7 +118,7 @@ impl ProfileRegistry {
 
 impl Default for ProfileRegistry {
     fn default() -> Self {
-        Self::V1
+        Self::V2
     }
 }
 
@@ -145,7 +154,8 @@ const STRUCTURED_TEXT: &[&str] = &[
     "image/svg+xml",
 ];
 
-/// `zip-v1`: ZIP containers and the OOXML/ODF families.
+/// `zip-v1` in registry v1: ZIP containers and the OOXML/ODF
+/// families.
 const ZIP: &[&str] = &[
     "application/zip",
     "application/java-archive",
@@ -157,6 +167,28 @@ const ZIP: &[&str] = &[
     "application/vnd.oasis.opendocument.spreadsheet",
     "application/vnd.oasis.opendocument.presentation",
 ];
+
+/// `zip-v1` in registry v2: ZIP containers and the ODF family (ODF
+/// packages begin with a `mimetype` member, not
+/// `[Content_Types].xml`, so the OOXML profiles do not apply).
+const ZIP_V2: &[&str] = &[
+    "application/zip",
+    "application/java-archive",
+    "application/epub+zip",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.oasis.opendocument.presentation",
+];
+
+/// `ooxml-v1`: the Office Open XML package kinds.
+const OOXML: &[&str] = &[
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+];
+
+/// `pdf-v1`: PDF documents.
+const PDF: &[&str] = &["application/pdf"];
 
 /// `isobmff-v1`: the ISO Base Media File Format family.
 const ISOBMFF: &[&str] = &[
@@ -191,6 +223,41 @@ const V1_FAMILIES: &[Family] = &[
     Family {
         profile: ChunkingProfile::ZipV1,
         essences: ZIP,
+    },
+    Family {
+        profile: ChunkingProfile::IsobmffV1,
+        essences: ISOBMFF,
+    },
+    Family {
+        profile: ChunkingProfile::MatroskaV1,
+        essences: MATROSKA,
+    },
+    Family {
+        profile: ChunkingProfile::MpegtsV1,
+        essences: MPEGTS,
+    },
+    Family {
+        profile: ChunkingProfile::FramedAudioV1,
+        essences: FRAMED_AUDIO,
+    },
+];
+
+const V2_FAMILIES: &[Family] = &[
+    Family {
+        profile: ChunkingProfile::StructuredTextV1,
+        essences: STRUCTURED_TEXT,
+    },
+    Family {
+        profile: ChunkingProfile::ZipV1,
+        essences: ZIP_V2,
+    },
+    Family {
+        profile: ChunkingProfile::OoxmlV1,
+        essences: OOXML,
+    },
+    Family {
+        profile: ChunkingProfile::PdfV1,
+        essences: PDF,
     },
     Family {
         profile: ChunkingProfile::IsobmffV1,

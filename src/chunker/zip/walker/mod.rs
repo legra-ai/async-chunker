@@ -10,6 +10,8 @@
 mod core;
 mod descriptor;
 mod dispatch;
+mod events;
 mod state;
 
-pub(super) use core::Walker;
+pub(in crate::chunker) use core::Walker;
+pub(in crate::chunker) use events::{NoEvents, ZipEvents};

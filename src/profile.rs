@@ -56,11 +56,23 @@ pub enum ChunkingProfile {
     MpegtsV1,
     /// Framed audio: MP3/AAC/FLAC-style streams (ELS-11).
     FramedAudioV1,
+    /// Office Open XML packages (Word, Excel, PowerPoint) in the
+    /// **canonicalizing** mode: members are inflated and re-emitted
+    /// deterministically, and chunks concatenate to that canonical
+    /// form rather than to the input bytes (ELS-15).
+    OoxmlV1,
+    /// Office Open XML packages in the **byte-exact-reversible**
+    /// mode: part-aware boundaries over the original bytes; chunks
+    /// concatenate to the input (ELS-15).
+    OoxmlBerV1,
+    /// PDF documents: object-aligned boundaries over the original
+    /// bytes (ELS-17).
+    PdfV1,
 }
 
 impl ChunkingProfile {
     /// Every registry entry, in stable wire-ID order.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 10] = [
         Self::GenericCdcV1,
         Self::StructuredTextV1,
         Self::ZipV1,
@@ -68,6 +80,9 @@ impl ChunkingProfile {
         Self::MatroskaV1,
         Self::MpegtsV1,
         Self::FramedAudioV1,
+        Self::OoxmlV1,
+        Self::OoxmlBerV1,
+        Self::PdfV1,
     ];
 
     /// The profile's frozen wire ID.
@@ -81,6 +96,9 @@ impl ChunkingProfile {
             Self::MatroskaV1 => 5,
             Self::MpegtsV1 => 6,
             Self::FramedAudioV1 => 7,
+            Self::OoxmlV1 => 8,
+            Self::OoxmlBerV1 => 9,
+            Self::PdfV1 => 10,
         })
     }
 
@@ -101,6 +119,9 @@ impl ChunkingProfile {
             Self::MatroskaV1 => "matroska-v1",
             Self::MpegtsV1 => "mpegts-v1",
             Self::FramedAudioV1 => "framed-audio-v1",
+            Self::OoxmlV1 => "ooxml-v1",
+            Self::OoxmlBerV1 => "ooxml-ber-v1",
+            Self::PdfV1 => "pdf-v1",
         }
     }
 

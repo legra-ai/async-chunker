@@ -3,7 +3,7 @@
 use crate::ChunkError;
 
 use super::fault::{ZipFault, stream_rejected};
-use super::walker::Walker;
+use super::walker::{NoEvents, Walker};
 use crate::chunker::assembler::BoundaryAssembler;
 use crate::chunker::gear;
 use crate::chunker::profile_chunker::Chunker;
@@ -71,7 +71,7 @@ impl Chunker for ZipChunker {
             if self.walker.at_member_boundary() {
                 self.assembler.boundary(emit);
             }
-            let large = match self.walker.consume(byte) {
+            let large = match self.walker.consume(byte, &mut NoEvents) {
                 Ok(large) => large,
                 Err(fault) => return Err(self.reject(fault)),
             };
