@@ -53,3 +53,16 @@ pub const FRAMED_AUDIO_STRICT_MASK: u64 = 0x7F << 57;
 /// `framed-audio-v1` cut mask judged at frame seams once the target
 /// length is reached: the hash's top five bits, one candidate in 32.
 pub const FRAMED_AUDIO_RELAXED_MASK: u64 = 0x1F << 59;
+
+/// Longest byte prefix the detector reads before choosing a
+/// profile. Every probe decides within it: the MPEG-TS probe needs
+/// two packet sync bytes (189 bytes) and the structured-text probe
+/// scans the whole prefix; the rest decide within sixteen bytes.
+pub const PROBE_PREFIX_MAX_BYTES: usize = 512;
+
+/// RFC 6838 §4.2 limit on a media type's type and subtype names.
+pub const MAX_MEDIA_TYPE_NAME_BYTES: usize = 127;
+
+/// Most parameters a [`MediaType`](crate::MediaType) may carry; a
+/// media type is a short label, not a property bag.
+pub const MAX_MEDIA_TYPE_PARAMETERS: usize = 16;
