@@ -3,7 +3,8 @@
 //! handlers.
 
 use super::super::fault::ZipFault;
-use super::super::records::Zip64EndRecord;
+use super::super::records::{MemberSizes, Zip64EndRecord};
+use super::events::ZipEvents;
 use super::state::{Phase, State, fixed_len};
 
 /// Largest fixed record part the walker collects at once.
@@ -15,7 +16,7 @@ const _: () = assert!(DESCRIPTOR_MAX <= FIXED_MAX);
 /// The walker. Holds one small fixed buffer, one bounded variable
 /// buffer (name + extra + comment, each at most 65 535 bytes), a few
 /// counters — never the archive.
-pub(in crate::chunker::zip) struct Walker {
+pub(in crate::chunker) struct Walker {
     pub(super) state: State,
     pub(super) phase: Phase,
     /// Bytes consumed so far (the diagnostic offset).
@@ -31,7 +32,7 @@ pub(in crate::chunker::zip) struct Walker {
 }
 
 impl Walker {
-    pub(in crate::chunker::zip) fn new() -> Self {
+    pub(in crate::chunker) fn new() -> Self {
         Self {
             state: State::Signature { len: 0 },
             phase: Phase::Members,
@@ -47,29 +48,33 @@ impl Walker {
     }
 
     /// Bytes consumed so far.
-    pub(in crate::chunker::zip) const fn offset(&self) -> u64 {
+    pub(in crate::chunker) const fn offset(&self) -> u64 {
         self.offset
     }
 
     /// Whether the next byte begins a member (or the central
     /// directory) — the profile's cut candidate.
-    pub(in crate::chunker::zip) fn at_member_boundary(&self) -> bool {
+    pub(in crate::chunker) fn at_member_boundary(&self) -> bool {
         matches!(self.state, State::Signature { len: 0 }) && self.phase == Phase::Members
     }
 
-    /// Consume one byte. Returns the local header's length (fixed
-    /// part, name, and extra) when this byte completes the header of
-    /// a **large** member — compressed size at least the minimum
-    /// chunk size — so the assembler can realign the chunk to the
-    /// member.
-    pub(in crate::chunker::zip) fn consume(&mut self, byte: u8) -> Result<Option<usize>, ZipFault> {
-        let result = self.step(byte);
+    /// Consume one byte, reporting structure to `events`. Returns
+    /// the local header's length (fixed part, name, and extra) when
+    /// this byte completes the header of a **large** member —
+    /// compressed size at least the minimum chunk size — so the
+    /// assembler can realign the chunk to the member.
+    pub(in crate::chunker) fn consume(
+        &mut self,
+        byte: u8,
+        events: &mut dyn ZipEvents,
+    ) -> Result<Option<usize>, ZipFault> {
+        let result = self.step(byte, events);
         self.offset += 1;
         result
     }
 
     /// The stream ended: the archive must be complete.
-    pub(in crate::chunker::zip) fn finish(&self) -> Result<(), ZipFault> {
+    pub(in crate::chunker) fn finish(&self) -> Result<(), ZipFault> {
         if self.phase == Phase::Complete && matches!(self.state, State::Signature { len: 0 }) {
             Ok(())
         } else {
@@ -77,7 +82,7 @@ impl Walker {
         }
     }
 
-    fn step(&mut self, byte: u8) -> Result<Option<usize>, ZipFault> {
+    fn step(&mut self, byte: u8, events: &mut dyn ZipEvents) -> Result<Option<usize>, ZipFault> {
         match self.state {
             State::Signature { len } => {
                 if self.phase == Phase::Complete {
@@ -85,7 +90,7 @@ impl Walker {
                 }
                 self.fixed[len] = byte;
                 if len + 1 == 4 {
-                    self.dispatch_signature()?;
+                    self.dispatch_signature(events)?;
                 } else {
                     self.state = State::Signature { len: len + 1 };
                 }
@@ -94,7 +99,7 @@ impl Walker {
             State::Fixed { kind, len } => {
                 self.fixed[len] = byte;
                 if len + 1 == fixed_len(kind) {
-                    self.dispatch_fixed(kind)
+                    self.dispatch_fixed(kind, events)
                 } else {
                     self.state = State::Fixed { kind, len: len + 1 };
                     Ok(None)
@@ -103,7 +108,7 @@ impl Walker {
             State::Variable { kind, total } => {
                 self.variable.push(byte);
                 if self.variable.len() == total {
-                    self.dispatch_variable(kind)
+                    self.dispatch_variable(kind, events)
                 } else {
                     Ok(None)
                 }
@@ -111,14 +116,19 @@ impl Walker {
             State::Data {
                 remaining,
                 total,
+                uncompressed,
+                crc,
                 method,
                 descriptor,
             } => {
+                events.member_data(byte);
                 let remaining = remaining - 1;
                 self.state = if remaining > 0 {
                     State::Data {
                         remaining,
                         total,
+                        uncompressed,
+                        crc,
                         method,
                         descriptor,
                     }
@@ -130,7 +140,16 @@ impl Walker {
                             method,
                             len: 0,
                         },
-                        None => State::Signature { len: 0 },
+                        None => {
+                            events.member_end(
+                                MemberSizes {
+                                    compressed: total,
+                                    uncompressed,
+                                },
+                                crc,
+                            );
+                            State::Signature { len: 0 }
+                        }
                     }
                 };
                 Ok(None)
@@ -141,7 +160,7 @@ impl Walker {
                 zip64,
                 pending,
             } => self
-                .scan(byte, consumed, method, zip64, pending)
+                .scan(byte, consumed, method, zip64, pending, events)
                 .map(|()| None),
             State::Descriptor {
                 shape,
@@ -156,7 +175,7 @@ impl Walker {
                     method,
                     len: len + 1,
                 };
-                self.try_close_descriptor(shape, data_len, method, len + 1)
+                self.try_close_descriptor(shape, data_len, method, len + 1, events)
                     .map(|()| None)
             }
             State::Skip { remaining, then } => {

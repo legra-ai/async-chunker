@@ -8,11 +8,15 @@ use super::super::records::{
     Zip64EndRecord,
 };
 use super::core::Walker;
+use super::events::ZipEvents;
 use super::state::{DescriptorShape, Phase, Record, State, Variable};
 use crate::constants::GENERIC_CDC_CHUNK_MIN_BYTES;
 
 impl Walker {
-    pub(super) fn dispatch_signature(&mut self) -> Result<(), ZipFault> {
+    pub(super) fn dispatch_signature(
+        &mut self,
+        events: &mut dyn ZipEvents,
+    ) -> Result<(), ZipFault> {
         let signature: [u8; 4] = [self.fixed[0], self.fixed[1], self.fixed[2], self.fixed[3]];
         let kind = match signature {
             LOCAL_HEADER => Record::Local,
@@ -29,15 +33,24 @@ impl Walker {
             (Record::Central, Phase::Members) => {
                 self.phase = Phase::Central;
                 self.central_start = Some(record_start);
+                events.central_begun();
             }
             (Record::Central, Phase::Central) => {}
             (Record::Central, _) => return Err(ZipFault::RecordOutOfSequence),
             (Record::Zip64End, Phase::Members | Phase::Central) => {
+                if self.phase == Phase::Members {
+                    events.central_begun();
+                }
                 self.begin_end_sequence(record_start);
                 self.phase = Phase::Zip64EndSeen;
             }
             (Record::Zip64Locator, Phase::Zip64EndSeen) => self.phase = Phase::LocatorSeen,
-            (Record::End, Phase::Members | Phase::Central) => self.begin_end_sequence(record_start),
+            (Record::End, Phase::Members | Phase::Central) => {
+                if self.phase == Phase::Members {
+                    events.central_begun();
+                }
+                self.begin_end_sequence(record_start);
+            }
             (Record::End, Phase::LocatorSeen) => {}
             (_, _) => return Err(ZipFault::RecordOutOfSequence),
         }
@@ -54,7 +67,11 @@ impl Walker {
         self.central_end = record_start;
     }
 
-    pub(super) fn dispatch_fixed(&mut self, kind: Record) -> Result<Option<usize>, ZipFault> {
+    pub(super) fn dispatch_fixed(
+        &mut self,
+        kind: Record,
+        events: &mut dyn ZipEvents,
+    ) -> Result<Option<usize>, ZipFault> {
         match kind {
             Record::Local => {
                 let header = LocalHeader::parse(
@@ -66,6 +83,7 @@ impl Walker {
                 self.begin_variable(
                     Variable::Local(header),
                     usize::from(header.name_len) + usize::from(header.extra_len),
+                    events,
                 )
             }
             Record::Central => {
@@ -80,6 +98,7 @@ impl Walker {
                     usize::from(header.name_len)
                         + usize::from(header.extra_len)
                         + usize::from(header.comment_len),
+                    events,
                 )
             }
             Record::End => {
@@ -109,11 +128,16 @@ impl Walker {
         }
     }
 
-    fn begin_variable(&mut self, kind: Variable, total: usize) -> Result<Option<usize>, ZipFault> {
+    fn begin_variable(
+        &mut self,
+        kind: Variable,
+        total: usize,
+        events: &mut dyn ZipEvents,
+    ) -> Result<Option<usize>, ZipFault> {
         self.variable.clear();
         if total == 0 {
             self.state = State::Variable { kind, total };
-            return self.dispatch_variable(kind);
+            return self.dispatch_variable(kind, events);
         }
         self.state = State::Variable { kind, total };
         Ok(None)
@@ -129,43 +153,49 @@ impl Walker {
     }
 
     /// Returns the local header's length for a large member.
-    pub(super) fn dispatch_variable(&mut self, kind: Variable) -> Result<Option<usize>, ZipFault> {
+    pub(super) fn dispatch_variable(
+        &mut self,
+        kind: Variable,
+        events: &mut dyn ZipEvents,
+    ) -> Result<Option<usize>, ZipFault> {
         match kind {
             Variable::Local(header) => {
+                let name = &self.variable[..usize::from(header.name_len)];
                 let extra = &self.variable[usize::from(header.name_len)..];
                 let zip64 = header.needs_zip64();
-                let sizes = header.sizes(extra)?;
                 let header_len = LocalHeader::FIXED_LEN + 4 + self.variable.len();
+                if header.has_descriptor && header.raw_compressed() == 0 {
+                    events.local_header(name, header.method, header.utf8_flag, None, 0);
+                    self.state = State::DataScan {
+                        consumed: 0,
+                        method: header.method,
+                        zip64,
+                        pending: 0,
+                    };
+                    return Ok(None);
+                }
+                let sizes = header.sizes(extra)?;
+                events.local_header(
+                    name,
+                    header.method,
+                    header.utf8_flag,
+                    Some(sizes),
+                    header.crc,
+                );
                 let large =
                     (sizes.compressed >= GENERIC_CDC_CHUNK_MIN_BYTES as u64).then_some(header_len);
-                if header.has_descriptor {
-                    if sizes.compressed == 0 {
-                        self.state = State::DataScan {
-                            consumed: 0,
-                            method: header.method,
-                            zip64,
-                            pending: 0,
-                        };
-                    } else {
-                        sizes.check(header.method)?;
-                        self.state = State::Data {
-                            remaining: sizes.compressed,
-                            total: sizes.compressed,
-                            method: header.method,
-                            descriptor: Some(DescriptorShape { zip64 }),
-                        };
-                    }
+                sizes.check(header.method)?;
+                if sizes.compressed == 0 {
+                    events.member_end(sizes, header.crc);
+                    self.state = State::Signature { len: 0 };
                 } else {
-                    sizes.check(header.method)?;
-                    self.state = if sizes.compressed == 0 {
-                        State::Signature { len: 0 }
-                    } else {
-                        State::Data {
-                            remaining: sizes.compressed,
-                            total: sizes.compressed,
-                            method: header.method,
-                            descriptor: None,
-                        }
+                    self.state = State::Data {
+                        remaining: sizes.compressed,
+                        total: sizes.compressed,
+                        uncompressed: sizes.uncompressed,
+                        crc: header.crc,
+                        method: header.method,
+                        descriptor: header.has_descriptor.then_some(DescriptorShape { zip64 }),
                     };
                 }
                 Ok(large)

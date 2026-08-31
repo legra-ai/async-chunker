@@ -7,7 +7,7 @@ use crate::profile::ChunkingProfile;
 /// A set of registry profiles: one bit per entry of
 /// [`ChunkingProfile::ALL`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct ProfileSet(u8);
+pub struct ProfileSet(u16);
 
 impl ProfileSet {
     /// The empty set.
@@ -21,7 +21,7 @@ impl ProfileSet {
         set
     }
 
-    fn bit(profile: ChunkingProfile) -> u8 {
+    fn bit(profile: ChunkingProfile) -> u16 {
         let index = ChunkingProfile::ALL
             .iter()
             .position(|entry| *entry == profile)

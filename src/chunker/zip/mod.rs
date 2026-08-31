@@ -3,11 +3,11 @@
 //! that places cuts at member boundaries and never inflates.
 
 mod chunker;
-mod fault;
-mod records;
-mod walker;
+pub(in crate::chunker) mod fault;
+pub(in crate::chunker) mod records;
+pub(in crate::chunker) mod walker;
 
 #[cfg(test)]
-mod tests;
+pub(in crate::chunker) mod tests;
 
 pub use chunker::ZipChunker;

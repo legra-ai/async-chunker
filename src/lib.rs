@@ -13,7 +13,8 @@ pub mod profile;
 
 pub use chunker::{
     ChunkBoundaries, Chunker, FramedAudioChunker, GenericCdcChunker, IsobmffChunker,
-    MatroskaChunker, MpegtsChunker, ProfileChunker, StructuredTextChunker, ZipChunker,
+    MatroskaChunker, MpegtsChunker, OfficeKind, OoxmlBerChunker, OoxmlChunker, PackageObserver,
+    PdfChunker, ProfileChunker, StructuredTextChunker, ZipChunker,
 };
 pub use constants::{
     FRAMED_AUDIO_RELAXED_MASK, FRAMED_AUDIO_STRICT_MASK, GENERIC_CDC_CHUNK_MAX_BYTES,

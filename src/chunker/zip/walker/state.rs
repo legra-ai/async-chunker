@@ -35,6 +35,8 @@ pub(super) enum State {
     Data {
         remaining: u64,
         total: u64,
+        uncompressed: u64,
+        crc: u32,
         method: u16,
         descriptor: Option<DescriptorShape>,
     },
@@ -84,6 +86,11 @@ impl DescriptorShape {
     /// Bytes after the optional signature: CRC plus two sizes.
     pub(super) const fn body_len(self) -> usize {
         if self.zip64 { 4 + 16 } else { 4 + 8 }
+    }
+
+    /// The CRC inside a descriptor body.
+    pub(super) fn crc(self, body: &[u8]) -> u32 {
+        u32::from_le_bytes([body[0], body[1], body[2], body[3]])
     }
 
     /// The compressed size inside a descriptor body.

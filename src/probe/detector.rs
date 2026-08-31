@@ -31,6 +31,11 @@ impl Detector {
     /// Detector version 1: the probes for registry version 1.
     pub const V1: Self = Self { probes: probes::V1 };
 
+    /// Detector version 2: the probes for registry version 2 —
+    /// version 1 plus OOXML-package and PDF signatures, with ZIP
+    /// deferring to OOXML so detections stay disjoint.
+    pub const V2: Self = Self { probes: probes::V2 };
+
     /// Probe `prefix` — the stream's first bytes, at most
     /// [`PROBE_PREFIX_MAX_BYTES`] of them (a longer slice is
     /// truncated so the result matches a bounded read).
@@ -53,6 +58,6 @@ impl Detector {
 
 impl Default for Detector {
     fn default() -> Self {
-        Self::V1
+        Self::V2
     }
 }

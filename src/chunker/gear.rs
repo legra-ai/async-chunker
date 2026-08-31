@@ -28,6 +28,15 @@ pub(super) const MPEGTS_GEAR_SEED: &str = "legra/mpegts-v1/gear";
 /// Frozen seed for the `framed-audio-v1` gear table.
 pub(super) const FRAMED_AUDIO_GEAR_SEED: &str = "legra/framed-audio-v1/gear";
 
+/// Frozen seed for the `ooxml-v1` gear table.
+pub(super) const OOXML_GEAR_SEED: &str = "legra/ooxml-v1/gear";
+
+/// Frozen seed for the `ooxml-ber-v1` gear table.
+pub(super) const OOXML_BER_GEAR_SEED: &str = "legra/ooxml-ber-v1/gear";
+
+/// Frozen seed for the `pdf-v1` gear table.
+pub(super) const PDF_GEAR_SEED: &str = "legra/pdf-v1/gear";
+
 /// Byte values a gear table covers.
 const TABLE_SIZE: usize = 256;
 

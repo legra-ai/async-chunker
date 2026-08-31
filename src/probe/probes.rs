@@ -10,6 +10,44 @@ pub(super) struct Probe {
     pub(super) matches: fn(&[u8]) -> bool,
 }
 
+/// The version-2 probes: version 1 plus the OOXML-package and PDF
+/// signatures, with the ZIP probe deferring to the OOXML one so
+/// detections stay disjoint.
+pub(super) const V2: &[Probe] = &[
+    Probe {
+        profile: ChunkingProfile::StructuredTextV1,
+        matches: is_structured_text_prefix,
+    },
+    Probe {
+        profile: ChunkingProfile::OoxmlV1,
+        matches: is_ooxml,
+    },
+    Probe {
+        profile: ChunkingProfile::PdfV1,
+        matches: is_pdf,
+    },
+    Probe {
+        profile: ChunkingProfile::ZipV1,
+        matches: is_zip_not_ooxml,
+    },
+    Probe {
+        profile: ChunkingProfile::IsobmffV1,
+        matches: is_isobmff,
+    },
+    Probe {
+        profile: ChunkingProfile::MatroskaV1,
+        matches: is_matroska,
+    },
+    Probe {
+        profile: ChunkingProfile::MpegtsV1,
+        matches: is_mpegts,
+    },
+    Probe {
+        profile: ChunkingProfile::FramedAudioV1,
+        matches: is_framed_audio,
+    },
+];
+
 /// The version-1 probes, in registry order.
 pub(super) const V1: &[Probe] = &[
     Probe {
@@ -98,4 +136,32 @@ fn is_framed_audio(prefix: &[u8]) -> bool {
         return prefix.get(4).is_some_and(|flags| flags & 0x7F == 0);
     }
     matches!(prefix, [0xFF, second, ..] if second & 0xE0 == 0xE0)
+}
+
+/// An Office Open XML package: a ZIP whose first member is named
+/// `[Content_Types].xml` (Office writers emit it first; the
+/// 19-byte name and its length field sit inside any prefix that
+/// reaches 49 bytes).
+fn is_ooxml(prefix: &[u8]) -> bool {
+    const NAME: &[u8] = b"[Content_Types].xml";
+    if !prefix.starts_with(&[0x50, 0x4B, 0x03, 0x04]) {
+        return false;
+    }
+    let Some(len_bytes) = prefix.get(26..28) else {
+        return false;
+    };
+    if u16::from_le_bytes([len_bytes[0], len_bytes[1]]) != NAME.len() as u16 {
+        return false;
+    }
+    prefix.get(30..30 + NAME.len()) == Some(NAME)
+}
+
+/// A ZIP container that is not an OOXML package.
+fn is_zip_not_ooxml(prefix: &[u8]) -> bool {
+    is_zip(prefix) && !is_ooxml(prefix)
+}
+
+/// The `%PDF-` header.
+fn is_pdf(prefix: &[u8]) -> bool {
+    prefix.starts_with(b"%PDF-")
 }

@@ -5,4 +5,4 @@
 mod corpus;
 mod malformed;
 mod reuse;
-mod writer;
+pub(in crate::chunker) mod writer;

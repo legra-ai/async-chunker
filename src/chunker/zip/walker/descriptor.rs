@@ -4,6 +4,7 @@
 use super::super::fault::ZipFault;
 use super::super::records::{DATA_DESCRIPTOR, MemberSizes};
 use super::core::Walker;
+use super::events::ZipEvents;
 use super::state::{DescriptorShape, State};
 
 impl Walker {
@@ -19,6 +20,7 @@ impl Walker {
         method: u16,
         zip64: bool,
         mut pending: usize,
+        events: &mut dyn ZipEvents,
     ) -> Result<(), ZipFault> {
         let shape = DescriptorShape { zip64 };
         self.fixed[pending] = byte;
@@ -34,6 +36,7 @@ impl Walker {
                         uncompressed: shape.uncompressed(body),
                     };
                     sizes.check(method)?;
+                    events.member_end(sizes, shape.crc(body));
                     self.state = State::Signature { len: 0 };
                     return Ok(());
                 }
@@ -42,6 +45,7 @@ impl Walker {
             }
             // The first pending byte is member data (a non-signature,
             // or a false signature inside the data).
+            events.member_data(self.fixed[0]);
             self.fixed.copy_within(1..pending, 0);
             pending -= 1;
             consumed += 1;
@@ -66,6 +70,7 @@ impl Walker {
         data_len: u64,
         method: u16,
         len: usize,
+        events: &mut dyn ZipEvents,
     ) -> Result<(), ZipFault> {
         if len < 4 {
             return Ok(());
@@ -87,11 +92,12 @@ impl Walker {
         if shape.compressed(body) != data_len {
             return Err(ZipFault::DescriptorSizeMismatch);
         }
-        MemberSizes {
+        let sizes = MemberSizes {
             compressed: data_len,
             uncompressed: shape.uncompressed(body),
-        }
-        .check(method)?;
+        };
+        sizes.check(method)?;
+        events.member_end(sizes, shape.crc(body));
         self.state = State::Signature { len: 0 };
         Ok(())
     }
