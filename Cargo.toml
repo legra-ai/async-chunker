@@ -1,6 +1,6 @@
 [package]
 name = "async-chunker"
-version = "0.5.1"
+version = "0.5.2"
 description = "Bounded-memory asynchronous content-defined chunking for structured and media streams"
 authors = ["Jacobus Geluk <jacobus.geluk@dataroad.com>"]
 edition = "2024"
@@ -24,6 +24,7 @@ tokio = { version = "1", features = ["io-util"] }
 
 [dev-dependencies]
 flate2 = "1"
+ureq = "2"
 futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt", "io-util"] }
 

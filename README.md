@@ -290,6 +290,41 @@ Tokio runtime beyond what the caller's reader already requires.
 
 [DecompositionSink]: https://docs.rs/async-chunker/latest/async_chunker/decompose/trait.DecompositionSink.html
 
+## Try it on real files
+
+Three examples make the crate testable by anyone, on their own files —
+no fixtures checked into the repo:
+
+```text
+cargo run --release --example corpus
+```
+
+downloads a small curated corpus of well-known, freely-accessible sample
+files (a calibre-produced `.docx`, a Go-produced `.xlsx`, a python-pptx
+`.pptx`, W3C's PDF, Git-produced `.zip`/`.tar.gz`, Big Buck Bunny MP4/WebM,
+an Apple HLS transport-stream segment, a SoundHelix MP3) into `corpus/` —
+which is **not** checked into git — then sweeps every file in the directory
+through detection, decomposition, and chunking, and prints acceptance,
+routing, and chunk statistics per file. Drop your own files into `corpus/`
+(or point the example at any directory) to include them in the sweep:
+
+```text
+cargo run --release --example corpus -- --no-fetch ~/my-sample-files
+cargo run --release --example inspect -- report.docx
+cargo run --release --example dedup -- report-v1.docx report-v2.docx
+```
+
+`inspect` prints one file's routing in detail (member tree with inferred
+media types for compounds, chunk histogram); `dedup` chunks two files and
+reports how many of the second file's chunks the first already produced —
+the "two variations of the same document" question, answered in seconds.
+
+Contributions welcome: new manifest entries (pinned, stable, freely
+redistributable URLs only), new probes, new profiles, new container
+walkers — the per-profile test suites under `src/chunker/*/tests/` and
+`src/decompose/tests/` show the expected shape (golden boundaries,
+feed-order independence, malformed-input rejection, bounded state).
+
 ## License
 
 Licensed under either of:
