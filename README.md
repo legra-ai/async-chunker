@@ -67,14 +67,15 @@ Three entry points, from most to least explicit:
 - **`AsyncChunker::new(profile)`** — the caller names the profile; no bytes
   are inspected.
 - **`AsyncChunker::chunk_declared(media_type, registry, reader)`** — the
-  caller declares a [`MediaType`], the versioned [`ProfileRegistry`] maps it
-  to a profile, and a bounded prefix probe refuses a *positive contradiction*
+  caller declares a [`MediaType`][MediaType], the versioned
+  [`ProfileRegistry`][ProfileRegistry] maps it to a profile, and a bounded
+  prefix probe refuses a *positive contradiction*
   (declared `application/zip`, bytes recognized as Matroska). The declaration
   otherwise wins: a generic declaration makes no structural claim, and an
   unrecognized prefix contradicts nothing — the specialist engine remains the
   authority on malformed input.
 - **`AsyncChunker::chunk_detected(reader)`** — nothing is declared; the
-  [`Detector`] probes at most `PROBE_PREFIX_MAX_BYTES` and chunks with the
+  [`Detector`][Detector] probes at most `PROBE_PREFIX_MAX_BYTES` and chunks with the
   recognized specialist, or with the explicit generic profile when no probe
   matches. Several matches are an error, never a guess.
 
@@ -86,7 +87,7 @@ type between profiles, or changing a probe, changes every boundary it
 produces and therefore lands as a new version.
 
 Probing never loses bytes. The consumed prefix is replayed ahead of the rest
-of the reader through [`PrefixReplay`], and because every boundary is a pure
+of the reader through [`PrefixReplay`][PrefixReplay], and because every boundary is a pure
 function of the profile and the bytes, a probed stream chunks exactly like an
 unprobed one.
 
@@ -132,6 +133,11 @@ The core profile engines (`Chunker` implementors such as `ZipChunker`) are
 synchronous and runtime-free: feed windows with `push`, close with `finish`.
 Only the async adapters depend on `tokio::io::AsyncRead`, and they need no
 Tokio runtime beyond what the caller's reader already requires.
+
+[MediaType]: https://docs.rs/async-chunker/latest/async_chunker/struct.MediaType.html
+[ProfileRegistry]: https://docs.rs/async-chunker/latest/async_chunker/struct.ProfileRegistry.html
+[Detector]: https://docs.rs/async-chunker/latest/async_chunker/struct.Detector.html
+[PrefixReplay]: https://docs.rs/async-chunker/latest/async_chunker/struct.PrefixReplay.html
 
 ## License
 
