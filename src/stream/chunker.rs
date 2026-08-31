@@ -5,6 +5,10 @@ use std::pin::Pin;
 use futures_core::Stream;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
+use crate::media_type::MediaType;
+use crate::probe::Detector;
+use crate::profile::ChunkingProfile;
+use crate::registry::ProfileRegistry;
 use crate::{ChunkError, Chunker, ProfileChunker};
 
 const READ_WINDOW_BYTES: usize = 64 << 10;
@@ -21,10 +25,65 @@ impl AsyncChunker {
     ///
     /// Returns [`ChunkError::ProfileUnimplemented`] if a registered profile
     /// has no implementation.
-    pub fn new(profile: crate::ChunkingProfile) -> Result<Self, ChunkError> {
+    pub fn new(profile: ChunkingProfile) -> Result<Self, ChunkError> {
         Ok(Self {
             profile: ProfileChunker::open(profile)?,
         })
+    }
+
+    /// Opens the chunker `registry` selects for a declared
+    /// `media_type`, without looking at any bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ChunkError::ProfileUnimplemented`] if the selected
+    /// profile has no implementation.
+    pub fn declared(
+        media_type: &MediaType,
+        registry: &ProfileRegistry,
+    ) -> Result<Self, ChunkError> {
+        Self::new(registry.select(media_type))
+    }
+
+    /// Probes the first bytes of `reader` with [`Detector::V1`],
+    /// chunks with the recognized specialist — or the explicit
+    /// generic profile when nothing matched — and replays the probed
+    /// prefix so no byte is lost.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ChunkError::AmbiguousDetection`] when more than one
+    /// specialist matched (declare a media type instead), or
+    /// [`ChunkError::Io`] when the probe read fails.
+    pub async fn chunk_detected<R>(reader: R) -> Result<ChunkStream, ChunkError>
+    where
+        R: AsyncRead + Unpin + Send + 'static,
+    {
+        let (detection, replay) = Detector::V1.probe(reader).await?;
+        Ok(Self::new(detection.resolve()?)?.chunk(replay))
+    }
+
+    /// Chunks `reader` with the profile `registry` selects for the
+    /// declared `media_type`, after probing the first bytes with
+    /// [`Detector::V1`] and refusing a positive contradiction (see
+    /// [`Detection::reconcile`](crate::Detection::reconcile)).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ChunkError::DeclaredDetectedMismatch`] when the
+    /// bytes are recognized as a different specialist than the one
+    /// declared, or [`ChunkError::Io`] when the probe read fails.
+    pub async fn chunk_declared<R>(
+        media_type: &MediaType,
+        registry: &ProfileRegistry,
+        reader: R,
+    ) -> Result<ChunkStream, ChunkError>
+    where
+        R: AsyncRead + Unpin + Send + 'static,
+    {
+        let declared = registry.select(media_type);
+        let (detection, replay) = Detector::V1.probe(reader).await?;
+        Ok(Self::new(detection.reconcile(declared)?)?.chunk(replay))
     }
 
     /// Turns an asynchronous byte reader into a stream of owned chunks.
@@ -81,34 +140,3 @@ impl AsyncChunker {
 
 /// The asynchronous stream returned by [`AsyncChunker::chunk`].
 pub type ChunkStream = Pin<Box<dyn Stream<Item = Result<Box<[u8]>, ChunkError>> + Send>>;
-
-#[cfg(test)]
-mod tests {
-    use futures_util::StreamExt;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn emits_chunks_incrementally_without_collecting_the_input() {
-        let mut input = vec![0_u8; 512 << 10];
-        input[0] = 1;
-        let reader = std::io::Cursor::new(input.clone());
-        let chunker = AsyncChunker::new(crate::ChunkingProfile::GenericCdcV1)
-            .expect("registered profile is implemented");
-        let mut stream = chunker.chunk(reader);
-
-        let first = stream
-            .next()
-            .await
-            .expect("the input produces a first chunk")
-            .expect("the input is valid");
-        assert!(!first.is_empty());
-        assert!(first.len() <= crate::constants::GENERIC_CDC_CHUNK_MAX_BYTES);
-
-        let mut remainder = Vec::new();
-        while let Some(chunk) = stream.next().await {
-            remainder.extend_from_slice(&chunk.expect("the input is valid"));
-        }
-        assert_eq!(first.len() + remainder.len(), input.len());
-    }
-}

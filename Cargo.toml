@@ -1,6 +1,6 @@
 [package]
 name = "async-chunker"
-version = "0.1.2"
+version = "0.2.0"
 description = "Bounded-memory asynchronous content-defined chunking for structured and media streams"
 authors = ["Jacobus Geluk <jacobus.geluk@dataroad.com>"]
 edition = "2024"
