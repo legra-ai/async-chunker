@@ -10,18 +10,33 @@ use crate::constants::{
     STRUCTURED_TEXT_RELAXED_MASK, STRUCTURED_TEXT_STRICT_MASK,
 };
 
+/// The candidate class a pushed byte ends (text-seam gating).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Seam {
+    None,
+    /// A line end or tag close: judged under the strict mask at any
+    /// length past the minimum.
+    Strict,
+    /// Whitespace or a structural terminator: judged under the
+    /// relaxed mask once the target length is reached.
+    Soft,
+}
+
 /// How the assembler judges content-defined cuts inside the current
 /// region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum CutGate {
     /// Every byte is a candidate (binary payloads).
     PerByte,
-    /// Only textual seams — a line end or a tag close — are
-    /// candidates, under the structured-text masks. Low-entropy
-    /// periodic text starves the per-byte gear of distinct window
-    /// states, degrading cuts to offset-aligned forced cuts that
-    /// never re-synchronize after an insertion; seam gating keeps
-    /// boundaries on content.
+    /// Textual candidates only, mirroring the structured-text
+    /// profile's classes: a line end (or tag close) is a strict
+    /// candidate, other whitespace and structural terminators are
+    /// soft candidates judged once the target length is reached —
+    /// under the structured-text masks, which are tuned to exactly
+    /// this candidate density. Low-entropy periodic text starves the
+    /// per-byte gear of distinct window states, degrading cuts to
+    /// offset-aligned forced cuts that never re-synchronize after an
+    /// insertion; seam gating keeps boundaries on content.
     TextSeam,
 }
 
@@ -50,8 +65,8 @@ pub(super) struct BoundaryAssembler {
     strict_mask: u64,
     relaxed_mask: u64,
     gate: CutGate,
-    /// The byte just pushed ended a textual seam.
-    at_seam: bool,
+    /// The candidate class of the byte just pushed.
+    seam: Seam,
     /// A structural boundary closes the chunk at this size; the
     /// container profiles use the shared minimum, the document
     /// profiles a lower unit-aligned one.
@@ -78,7 +93,7 @@ impl BoundaryAssembler {
             strict_mask: gear::generic_strict_mask(),
             relaxed_mask: gear::generic_relaxed_mask(),
             gate: CutGate::PerByte,
-            at_seam: false,
+            seam: Seam::None,
             unit_min,
             buffer: Vec::with_capacity(GENERIC_CDC_CHUNK_MAX_BYTES),
             held: Vec::with_capacity(GENERIC_CDC_CHUNK_MAX_BYTES),
@@ -136,7 +151,11 @@ impl BoundaryAssembler {
     pub(super) fn push(&mut self, byte: u8, emit: &mut dyn FnMut(&[u8])) {
         self.buffer.push(byte);
         self.hash.update(byte);
-        self.at_seam = matches!(byte, b'\n' | b'>');
+        self.seam = match byte {
+            b'\n' | b'>' => Seam::Strict,
+            b'\t' | b'\r' | b' ' | b',' | b';' | b'.' | b'}' | b']' | b')' | b'"' => Seam::Soft,
+            _ => Seam::None,
+        };
         if self.cut_here() {
             self.close_chunk(emit);
         }
@@ -181,17 +200,11 @@ impl BoundaryAssembler {
                 };
                 self.hash.cuts(mask)
             }
-            CutGate::TextSeam => {
-                if !self.at_seam {
-                    return false;
-                }
-                let mask = if before_target {
-                    STRUCTURED_TEXT_STRICT_MASK
-                } else {
-                    STRUCTURED_TEXT_RELAXED_MASK
-                };
-                self.hash.cuts(mask)
-            }
+            CutGate::TextSeam => match (self.seam, before_target) {
+                (Seam::None, _) | (Seam::Soft, true) => false,
+                (Seam::Strict, true) => self.hash.cuts(STRUCTURED_TEXT_STRICT_MASK),
+                (Seam::Strict | Seam::Soft, false) => self.hash.cuts(STRUCTURED_TEXT_RELAXED_MASK),
+            },
         }
     }
 
