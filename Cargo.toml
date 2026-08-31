@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/legra-ai/async-chunker"
 documentation = "https://docs.rs/async-chunker"
 readme = "README.md"
+build = "build.rs"
 keywords = ["async", "chunking", "streaming", "content-defined", "parser"]
 categories = ["asynchronous", "data-structures", "encoding"]
 publish = true
@@ -27,6 +28,9 @@ flate2 = "1"
 ureq = "2"
 futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt", "io-util"] }
+
+[build-dependencies]
+rhusky = "0.0.6"
 
 [lints.rust]
 missing_docs = "deny"

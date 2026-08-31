@@ -25,6 +25,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "miniz_oxide 0.8.9",
+ "rhusky",
  "thiserror",
  "tokio",
  "ureq",
@@ -384,6 +385,12 @@ checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "rhusky"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd58f5095f1eaaee85441008005db48773976f5bb85bedd35d6cf3f04db8ec4b"
 
 [[package]]
 name = "ring"
