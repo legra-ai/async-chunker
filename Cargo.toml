@@ -18,7 +18,7 @@ async-stream = "0.3"
 blake3 = "1"
 crc32fast = "1"
 futures-core = "0.3"
-miniz_oxide = "0.8"
+miniz_oxide = "0.9"
 thiserror = "2"
 tokio = { version = "1", features = ["io-util"] }
 
