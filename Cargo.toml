@@ -24,7 +24,7 @@ tokio = { version = "1", features = ["io-util"] }
 
 [dev-dependencies]
 flate2 = "1"
-ureq = "2"
+ureq = "3"
 futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt", "io-util"] }
 
