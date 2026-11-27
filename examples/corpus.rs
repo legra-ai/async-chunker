@@ -72,7 +72,7 @@ fn fetch(dir: &Path) {
             continue;
         }
         print!("fetching {name} … ");
-        match ureq::get(url).call() {
+        match ureq::get(*url).call() {
             Ok(response) => {
                 let mut bytes = Vec::new();
                 if let Err(error) = response.into_body().into_reader().read_to_end(&mut bytes) {
